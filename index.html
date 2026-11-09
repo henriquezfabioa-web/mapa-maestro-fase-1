@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa Maestro · Fase 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Mundo único: papel de valores (bono / certificado) — tinta azul, pátina verde, latón. Libro a doble página. */
+  --ink:#13263b;        /* azul tinta: portadas, títulos */
+  --paper:#f1f0eb;      /* papel neutro, ligeramente cálido */
+  --paper-2:#e6e4dc;    /* papel de recuadros */
+  --text:#1d2833;
+  --muted:#5a6570;
+  --patina:#2f7469;     /* acento principal */
+  --brass:#a8823a;      /* filetes, folios, detalles */
+  --rule:#cfcabd;
+  --s0:#737a82; --s1:#2d5f8f; --s2:#9a6f22; --s3:#2f7469;
+  --display:'Bodoni Moda', 'Didot', 'Bodoni 72', Georgia, serif;
+  --body:'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  --PW:500px; --PH:707px;
+  color-scheme: light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:#1a2430;background-image:radial-gradient(ellipse at 50% 40%, #2a3846 0%, #121a23 75%);font-family:var(--body);color:var(--text);overflow:hidden;-webkit-font-smoothing:antialiased}
+#stage{position:absolute;inset:0 0 64px 0;display:flex;align-items:center;justify-content:center}
+#scaler{transform-origin:center center}
+#book{position:relative;width:calc(var(--PW)*2);height:var(--PH);transition:transform .6s cubic-bezier(.3,.7,.2,1);}
+.leaf{position:absolute;top:0;left:var(--PW);width:var(--PW);height:var(--PH);transform-origin:left center;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.35,.65,.25,1);cursor:pointer}
+.leaf.flipped{transform:rotateY(-180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden}
+#shadow{position:absolute;top:0;bottom:0;left:0;right:0;box-shadow:0 26px 56px rgba(0,0,0,.42);transition:left .6s,right .6s;pointer-events:none}
+.cover .ft{width:100%;text-align:left}
+.face.back{transform:rotateY(180deg)}
+.face.front::after,.face.back::after{content:"";position:absolute;top:0;bottom:0;width:38px;pointer-events:none}
+.face.front::after{left:0;background:linear-gradient(90deg,rgba(0,0,0,.16),rgba(0,0,0,0))}
+.face.back::after{right:0;background:linear-gradient(270deg,rgba(0,0,0,.16),rgba(0,0,0,0))}
+#single{position:relative;width:var(--PW);height:var(--PH);display:none;box-shadow:0 30px 60px rgba(0,0,0,.45)}
+#single .sp{position:absolute;inset:0;opacity:0;transform:translateX(24px);transition:opacity .35s, transform .35s;pointer-events:none}
+#single .sp.on{opacity:1;transform:none;pointer-events:auto}
+
+/* ---------- Página ---------- */
+.pg{position:absolute;inset:0;background:var(--paper);display:flex;flex-direction:column;padding:26px 36px 0 36px;font-size:10.6px;line-height:1.45;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .2 0 0 0 0 .18 0 0 0 0 .15 0 0 0 .07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+.pg.dark{background-color:var(--ink);color:#e9e6dc}
+.pg .hd{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:7.6px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding-bottom:7px;border-bottom:.75px solid var(--rule)}
+.pg .hd b{color:var(--brass);font-weight:500}
+.pg .body{flex:1;display:flex;flex-direction:column;gap:11px;padding-top:16px;min-height:0}
+.pg .ft{margin-top:auto;padding:8px 0 14px;border-top:.75px solid var(--rule);display:flex;flex-direction:column;gap:3px}
+.pg.dark .ft,.pg.dark .hd{border-color:rgba(233,230,220,.22)}
+.ft .row1{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:7.4px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.pg.dark .ft .row1{color:#b9b4a6}
+.ft .folio{font-family:var(--display);font-size:13px;letter-spacing:0;color:var(--brass);font-weight:600}
+.ft .cargo{font-family:var(--body);font-size:7.6px;white-space:nowrap;overflow:hidden;color:var(--ink);font-weight:500;letter-spacing:.01em}
+.pg.dark .ft .cargo{color:#efe9da}
+.ft .cargo i{font-style:normal;color:var(--brass);padding:0 .45em;font-weight:400}
+.pg.even .ft .row1{flex-direction:row-reverse}
+
+.kicker{font-family:var(--mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--patina);font-weight:500}
+.pg.dark .kicker{color:#c9a65a}
+h2{font-family:var(--display);font-weight:600;font-size:29px;line-height:1.04;color:var(--ink);letter-spacing:-.01em;text-wrap:balance}
+h2 em{font-style:italic;font-weight:500;color:var(--patina)}
+.pg.dark h2{color:#f4efe2}
+h3{font-family:var(--display);font-weight:700;font-size:13.5px;line-height:1.15;color:var(--ink)}
+.pg.dark h3{color:#f4efe2}
+.lead{font-size:11.6px;line-height:1.45;color:var(--text);max-width:40em}
+.lead::first-letter{}
+p{max-width:44em}
+.muted{color:var(--muted)}
+.small{font-size:9.2px;line-height:1.4}
+.note{font-size:8.6px;color:var(--muted);line-height:1.4}
+.mono{font-family:var(--mono)}
+.rule{height:.75px;background:var(--rule)}
+.cols{display:grid;gap:12px}
+.c2{grid-template-columns:1fr 1fr}.c3{grid-template-columns:1fr 1fr 1fr}
+.box{background:var(--paper-2);border:.75px solid var(--rule);border-radius:3px;padding:9px 11px;display:flex;flex-direction:column;gap:4px}
+.box.hl{background:var(--ink);color:#ece7da;border-color:var(--ink)}
+.box.hl h3{color:#f4efe2}
+.box.pat{border-left:3px solid var(--patina)}
+ul.l{list-style:none;display:flex;flex-direction:column;gap:3px}
+ul.l li{padding-left:11px;position:relative}
+ul.l li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:.75px;background:var(--brass)}
+ol.n{list-style:none;counter-reset:n;display:flex;flex-direction:column;gap:4px}
+ol.n li{counter-increment:n;padding-left:19px;position:relative}
+ol.n li::before{content:counter(n);position:absolute;left:0;top:-1px;font-family:var(--display);font-weight:700;color:var(--brass);font-size:12px}
+table.t{width:100%;border-collapse:collapse;font-size:9px;line-height:1.35}
+table.t th{text-align:left;font-family:var(--mono);font-weight:500;font-size:7.4px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:4px 5px;border-bottom:1px solid var(--ink)}
+table.t td{padding:4px 5px;border-bottom:.75px solid var(--rule);vertical-align:top}
+table.t td.num,table.t th.num{text-align:right;font-variant-numeric:tabular-nums}
+table.t tr.tot td{font-weight:600;border-bottom:1px solid var(--ink)}
+.pill{display:inline-block;font-family:var(--mono);font-size:7.6px;letter-spacing:.06em;padding:1.5px 6px;border-radius:9px;color:#fff;white-space:nowrap;vertical-align:middle}
+.st0{background:var(--s0)}.st1{background:var(--s1)}.st2{background:var(--s2)}.st3{background:var(--s3)}
+.role{display:inline-block;font-family:var(--mono);font-size:7.4px;letter-spacing:.06em;text-transform:uppercase;padding:1.5px 6px;border-radius:2px;border:.75px solid currentColor;white-space:nowrap}
+.r-lead{color:#fff;background:var(--patina);border-color:var(--patina)}
+.r-rev{color:var(--s1)}.r-no{color:var(--s0)}.r-neg{color:var(--s2)}
+.quote{font-family:var(--display);font-style:italic;font-size:17px;line-height:1.25;color:var(--ink);border-left:2px solid var(--brass);padding-left:12px}
+.pg.dark .quote{color:#f4efe2}
+.big{font-family:var(--display);font-weight:700;font-size:44px;line-height:.95;color:var(--ink);font-variant-numeric:lining-nums}
+.tile{border-top:1.5px solid var(--ink);padding-top:6px;display:flex;flex-direction:column;gap:3px}
+.say{background:#fbfaf6;border:.75px solid var(--rule);border-left:3px solid var(--patina);padding:6px 9px;font-size:9.6px;line-height:1.4}
+.say .en{font-style:italic;color:var(--ink)}
+.say .es{color:var(--muted);font-size:8.8px}
+.chev{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.chev div{background:var(--ink);color:#ece7da;padding:8px 14px 8px 10px;clip-path:polygon(0 0,calc(100% - 9px) 0,100% 50%,calc(100% - 9px) 100%,0 100%,6px 50%);display:flex;flex-direction:column;gap:2px;min-height:62px}
+.chev div:first-child{clip-path:polygon(0 0,calc(100% - 9px) 0,100% 50%,calc(100% - 9px) 100%,0 100%)}
+.chev b{font-family:var(--display);font-size:11.5px;color:#f4efe2}
+.chev span{font-size:8.4px;line-height:1.3;color:#c9c3b3}
+.stackbar{display:flex;height:16px;border-radius:2px;overflow:hidden}
+.stackbar div{display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--mono);font-size:7.6px}
+.bars{display:flex;flex-direction:column;gap:6px}
+.bars .r{display:grid;grid-template-columns:176px 1fr 66px;gap:8px;align-items:center;font-size:9px}
+.bars .r .lab{text-align:right;line-height:1.2}
+.bars .r .tr{height:11px;background:transparent;position:relative}
+.bars .r .tr i{position:absolute;left:0;top:0;bottom:0;background:var(--s1);border-radius:1px}
+.bars .r .tr i.eur{background:var(--brass)}
+.bars .r .v{font-family:var(--mono);font-size:8.6px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ficha{border:.75px solid var(--rule);background:#fbfaf6;border-radius:3px;padding:7px 10px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px}
+.ficha .top{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-bottom:.75px solid var(--rule);padding-bottom:5px;margin-bottom:2px}
+.ficha .code{font-family:var(--mono);font-size:7.8px;color:var(--brass);letter-spacing:.08em}
+.ficha .amt{font-family:var(--display);font-weight:700;font-size:15px;color:var(--ink);white-space:nowrap}
+.ficha dt{font-family:var(--mono);font-size:7.2px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ficha dd{font-size:8.9px;line-height:1.3}
+.ficha .smart{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr;gap:1px 8px;background:var(--ink);color:#ece7da;padding:5px 9px;border-radius:2px;margin-top:3px;font-size:8.7px;line-height:1.3}
+.ficha .smart b{font-family:var(--display);color:#c9a65a;font-size:11px}
+.chain{display:flex;flex-direction:column}
+.chain .st{display:grid;grid-template-columns:20px 1fr 88px;gap:8px;align-items:start;padding:5px 0;border-bottom:.75px solid var(--rule)}
+.chain .st .k{font-family:var(--display);font-weight:700;font-size:14px;color:var(--brass);line-height:1}
+.chain .st h3{font-size:11.5px}
+.chain .st p{font-size:8.9px;line-height:1.35;color:var(--muted)}
+.chain .st .rcol{text-align:right}
+.scn{display:flex;flex-direction:column;gap:7px}
+.scn .s{display:grid;grid-template-columns:1fr 1.25fr;gap:10px;border-top:.75px solid var(--rule);padding-top:6px}
+.scn .s h3{font-size:11.5px}
+.scn .s .m{font-size:8.9px;color:var(--muted);line-height:1.35}
+.phase{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1.5px solid var(--ink)}
+.phase>div{padding:7px 8px 8px;border-right:.75px solid var(--rule);display:flex;flex-direction:column;gap:3px}
+.phase>div:last-child{border-right:none}
+.phase .d{font-family:var(--mono);font-size:7.6px;color:var(--brass);letter-spacing:.06em}
+.gate{display:flex;justify-content:space-between;align-items:center;padding:0 2px}
+.gate span{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:8px;color:var(--ink)}
+.gate span::before{content:"";width:9px;height:9px;background:var(--patina);transform:rotate(45deg)}
+.check{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:3px 14px;font-size:9.2px}
+.check li{padding-left:14px;position:relative;line-height:1.3}
+.check li::before{content:"";position:absolute;left:0;top:2px;width:8px;height:8px;border:.75px solid var(--ink);border-radius:1px}
+.toc{display:flex;flex-direction:column}
+.toc a{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:8px;padding:3.5px 0;border-bottom:.75px solid var(--rule);color:inherit;text-decoration:none;font-size:10.2px;cursor:pointer}
+.toc a:hover{color:var(--patina)}
+.toc a .pn{font-family:var(--display);font-weight:700;color:var(--brass);font-size:12px}
+.toc .sec{font-family:var(--mono);font-size:7.4px;letter-spacing:.14em;text-transform:uppercase;color:var(--patina);padding:8px 0 2px}
+.tocg{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.sig{font-family:var(--display);font-style:italic;font-size:16px;color:var(--ink)}
+
+/* Portadas */
+.cover{padding:0;overflow:hidden}
+.cover canvas{position:absolute;inset:0;width:100%;height:100%}
+.cover .in{position:relative;z-index:1;display:flex;flex-direction:column;height:100%;padding:30px 36px 0}
+.mast{font-family:var(--display);font-weight:800;font-size:76px;line-height:.86;letter-spacing:-.02em;color:#f6f1e3}
+.mast em{font-style:italic;font-weight:500;color:#c9a65a}
+.cover .coverlines{display:flex;flex-direction:column;gap:9px;max-width:230px}
+.cover .coverlines div{border-top:.75px solid rgba(233,230,220,.35);padding-top:5px;font-size:9.6px;line-height:1.35;color:#d9d3c3}
+.cover .coverlines b{display:block;font-family:var(--display);font-size:13px;color:#f4efe2;font-weight:600}
+.seal{width:84px;height:84px;border-radius:50%;border:1px solid #c9a65a;display:flex;align-items:center;justify-content:center;text-align:center;font-family:var(--mono);font-size:6.8px;letter-spacing:.12em;color:#c9a65a;text-transform:uppercase;line-height:1.5;background:rgba(19,38,59,.6)}
+
+/* Barra de herramientas */
+#bar{position:fixed;left:0;right:0;bottom:0;height:64px;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 16px;color:#e8e4d8;font-family:var(--body);font-size:13px}
+#bar button,#bar select{font:inherit;color:#f1ede2;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);border-radius:6px;height:36px;padding:0 12px;cursor:pointer}
+#bar button:hover,#bar select:hover{background:rgba(255,255,255,.14)}
+#bar button:focus-visible,#bar select:focus-visible,.toc a:focus-visible{outline:2px solid #c9a65a;outline-offset:2px}
+#bar select option{color:#13263b}
+#count{min-width:150px;text-align:center;font-family:var(--mono);font-size:12px;color:#cfc9b9}
+#bar .arrow{width:44px;font-size:18px;padding:0}
+@media (max-width:640px){#bar .opt{display:none}#count{min-width:96px}}
+@media (prefers-reduced-motion:reduce){.leaf,#book,#single .sp{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="stage"><div id="scaler"><div id="book" aria-live="polite"><div id="shadow"></div></div><div id="single"></div></div></div>
+<nav id="bar" aria-label="Navegación de la revista">
+  <button class="arrow" id="prev" aria-label="Página anterior">‹</button>
+  <span id="count">Portada</span>
+  <button class="arrow" id="next" aria-label="Página siguiente">›</button>
+  <select id="jump" class="opt" aria-label="Ir a la sección"></select>
+  <button id="mode" class="opt" aria-label="Cambiar vista">Una página</button>
+  <button id="fs" class="opt" aria-label="Pantalla completa">Pantalla completa</button>
+</nav>
+<script>
+const CARGO = ['Multijurisdictional Due Diligence','Corporate Alignment','Business Strategy','Communication','Risk & Positioning'];
+const P = [];
+const add = (sec, html, opt={}) => P.push(Object.assign({sec, html}, opt));
+
+/* 0 · PORTADA */
+add('Portada', `
+<canvas class="guil"></canvas>
+<div class="in">
+  <div class="kicker" style="color:#c9a65a">HEART DEVELOPMENT · N.A.T. Holdings AG</div>
+  <div style="height:22px"></div>
+  <div class="mast">Mapa<br>Maestro<br><em>Fase&nbsp;1</em></div>
+  <p style="margin-top:16px;font-family:var(--display);font-size:16px;line-height:1.3;color:#e9e3d2;max-width:320px">Due diligence, estructura y gobierno de un portafolio de 64 iniciativas en 21 países</p>
+  <div style="flex:1"></div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:16px">
+    <div class="coverlines">
+      <div><b>N.A.T.: la holding por diseñar</b>Por qué ahí se decide la inversión</div>
+      <div><b>Quién dirige qué</b>Las 11 etapas de cada proyecto</div>
+      <div><b>Cómo actuar y cómo hablar</b>Escenarios, frases, honorarios y gastos</div>
+    </div>
+    <div class="seal">Confidencial<br>Documento<br>de trabajo<br>Nov · 2026</div>
+  </div>
+</div>`, {dark:true, cover:true});
+
+/* 1 · ÍNDICE */
+add('Índice', `
+<div class="kicker">En esta edición</div>
+<h2>Índice</h2>
+<div class="tocg">
+<div class="toc">
+  <div class="sec">El portafolio</div>
+  <a data-go="2">Carta del asesor<span class="pn">2</span></a>
+  <a data-go="3">El portafolio en cifras<span class="pn">3</span></a>
+  <a data-go="4">Dónde está el capital<span class="pn">4</span></a>
+  <a data-go="5">El tablero de actores<span class="pn">5</span></a>
+  <a data-go="6">N.A.T. I · La pieza central<span class="pn">6</span></a>
+  <a data-go="7">N.A.T. II · La holding<span class="pn">7</span></a>
+  <a data-go="8">Priorización<span class="pn">8</span></a>
+  <a data-go="9">Prioridad 1 · fichas SMART<span class="pn">9</span></a>
+  <a data-go="11">Diez condiciones de holding<span class="pn">11</span></a>
+</div>
+<div class="toc">
+  <div class="sec">El proceso</div>
+  <a data-go="12">Quién dirige qué<span class="pn">12</span></a>
+  <a data-go="13">La cadena de once etapas<span class="pn">13</span></a>
+  <a data-go="14">Su rol: cuatro escenarios<span class="pn">14</span></a>
+  <a data-go="15">Las reuniones<span class="pn">15</span></a>
+  <a data-go="16">Agenda de 90 días<span class="pn">16</span></a>
+  <a data-go="17">Cuándo entra usted<span class="pn">17</span></a>
+  <div class="sec">El asesor</div>
+  <a data-go="18">Cómo pensar y actuar<span class="pn">18</span></a>
+  <a data-go="19">Cómo hablar<span class="pn">19</span></a>
+  <a data-go="20">Escenarios bajo presión<span class="pn">20</span></a>
+  <a data-go="22">Riesgo y posicionamiento<span class="pn">22</span></a>
+  <a data-go="23">Honorarios y gastos<span class="pn">23</span></a>
+  <a data-go="24">Formación y herramientas<span class="pn">24</span></a>
+  <a data-go="26">Decisiones y reglas de oro<span class="pn">26</span></a>
+</div>
+</div>
+<div style="flex:1"></div>
+<p class="quote">Un catálogo de oportunidades no es todavía una cartera de inversiones verificadas.</p>
+<p class="note">Base: dossier HEART DEVELOPMENT del 6 de noviembre de 2026. Reuniones, fechas y objetivos son propuestas de gestión. Arranque supuesto: 16 de noviembre de 2026.</p>`);
+
+/* 2 · CARTA */
+add('Carta del asesor', `
+<div class="kicker">Carta del asesor</div>
+<h2>Un catálogo <em>no es</em> una cartera</h2>
+<p class="lead">El 6 de noviembre de 2026, HEART DEVELOPMENT presentó a George Cutts un dossier con 64 iniciativas en 21 países: vivienda prefabricada, minería, industria, agroindustria, salud e infraestructura.</p>
+<p>Solo una reporta contrato firmado. El resto son oportunidades por calificar, conceptos o negociaciones en curso. Esa es la realidad de partida y el lugar donde empieza el trabajo.</p>
+<p>La Fase 1 convierte el dossier en un proceso: qué se verifica, quién dirige cada etapa, qué se decide y en qué fecha. Su regla central cabe en una línea.</p>
+<div class="box hl" style="padding:12px 14px"><div class="kicker" style="color:#c9a65a">La regla de la Fase 1</div><div style="font-family:var(--display);font-size:19px;line-height:1.2;color:#f4efe2">Ningún capital se compromete hasta que el proyecto cumpla su condición medible de avance.</div></div>
+<p>Esta edición reúne el método, los actores, la estructura propuesta para N.A.T. Holdings AG, el gobierno del proceso, la agenda de 90 días, la forma de actuar y hablar en cada escenario, y los gastos que cubre el cliente.</p>
+<p>Las cifras y los estados provienen del dossier. Las reuniones, las fechas y los objetivos son propuestas de gestión que se ajustarán con las partes.</p>
+<div style="flex:1"></div>
+<div><div class="sig">Fabio Henríquez G.</div><div class="note">Arquitectura Legal · fabiohenriquez.com</div></div>`);
+
+/* 3 · CIFRAS */
+add('El portafolio', `
+<div class="kicker">El portafolio en cifras</div>
+<h2>64 iniciativas, <em>una</em> con contrato firmado</h2>
+<div class="cols c3" style="gap:14px">
+  <div class="tile"><div class="big">64</div><div class="small">iniciativas: 29 de N.A.T. y 35 de HEART</div></div>
+  <div class="tile"><div class="big">21</div><div class="small">países en África, Caribe, América Latina, Europa y EE. UU.</div></div>
+  <div class="tile" style="border-color:var(--patina)"><div class="big" style="color:var(--patina)">1</div><div class="small">contrato reportado como firmado: Punta Cana</div></div>
+  <div class="tile"><div class="big">23</div><div class="small">con monto cifrado, 13 de ellas componentes agrícolas</div></div>
+  <div class="tile"><div class="big" style="color:var(--s2)">41</div><div class="small">sin monto definido</div></div>
+  <div class="tile"><div class="big">3</div><div class="small">comités propuestos: 16 dic, 15 ene y 16 feb</div></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:5px">
+  <div class="kicker" style="color:var(--muted)">Madurez de las 64 iniciativas</div>
+  <div class="stackbar"><div class="st0" style="width:14.06%">9</div><div class="st1" style="width:43.75%">28</div><div class="st2" style="width:40.63%">26</div><div class="st3" style="width:1.56%"></div></div>
+</div>
+<table class="t">
+  <tr><th>Estado</th><th class="num">N.A.T.</th><th class="num">HEART</th><th class="num">Total</th></tr>
+  <tr><td><span class="pill st0">○ Por calificar</span></td><td class="num">7</td><td class="num">2</td><td class="num">9</td></tr>
+  <tr><td><span class="pill st1">◇ Concepto o estudios</span></td><td class="num">8</td><td class="num">20</td><td class="num">28</td></tr>
+  <tr><td><span class="pill st2">◐ En negociación</span></td><td class="num">13</td><td class="num">13</td><td class="num">26</td></tr>
+  <tr><td><span class="pill st3">✓ Contrato firmado</span></td><td class="num">1</td><td class="num">0</td><td class="num">1</td></tr>
+  <tr class="tot"><td>Total</td><td class="num">29</td><td class="num">35</td><td class="num">64</td></tr>
+</table>
+<p class="note">Los 13 componentes agrícolas de Botsuana suman los USD 27,15 M del programa HD-15; no se cuentan dos veces. Fuente: dossier HEART DEVELOPMENT, 6 nov 2026.</p>`);
+
+/* 4 · CAPITAL */
+const amts = [['Burkina Faso, 16.150 viviendas · NAT-11','EUR 1.660 M',1660,1],['Gaborone Water City · HD-11','USD 1.000 M',1000],['Ghana Shai Hills · NAT-01','USD 588 M',588],['DOMICLOR · HD-35','USD 30 M',30],['Programa agrícola Botsuana · HD-15','USD 27,15 M',27.15],['Planta farmacéutica · HD-13','USD 8 M',8],['Fábrica La Romana · NAT-19','USD 7,5 M',7.5],['Planta de preservativos · HD-14','USD 5 M',5],['Transporte y montaje RD · NAT-22','USD 4 M',4],['Pruebas diagnósticas · HD-12','USD 1,5 M',1.5]];
+add('El portafolio', `
+<div class="kicker">Dónde está el capital</div>
+<h2>Tres proyectos concentran casi <em>todo</em> el capital cifrado</h2>
+<p class="lead">Burkina Faso, Gaborone y Shai Hills suman más del 98 % de los montos declarados. Son cifras del dossier, no capital comprometido.</p>
+<div class="bars">${amts.map(a=>`<div class="r"><div class="lab">${a[0]}</div><div class="tr"><i class="${a[3]?'eur':''}" style="width:${Math.max(.6,a[2]/1660*100)}%"></i></div><div class="v">${a[1]}</div></div>`).join('')}</div>
+<p class="note">Escala lineal. Burkina Faso en euros (latón); el resto en dólares.</p>
+<div class="cols c2">
+  <div class="box pat"><h3>El tamaño no es madurez</h3><p class="small">Shai Hills tiene acuerdo de 2020 y LOI de un fondo. Burkina Faso depende de que el Estado pueda garantizar los pagos. Gaborone tiene su contrato del paquete en firma.</p></div>
+  <div class="box pat"><h3>Lo pequeño puede ir primero</h3><p class="small">Pruebas diagnósticas (USD 1,5 M) y la fábrica de La Romana (USD 7,5 M) son tickets acotados que pueden demostrar ejecución antes que los grandes.</p></div>
+</div>`);
+
+/* 5 · TABLERO */
+add('El portafolio', `
+<div class="kicker">El tablero de actores</div>
+<h2>Cuatro partes con intereses, <em>nadie</em> que verifique</h2>
+<table class="t">
+  <tr><th style="width:24%">Actor</th><th>Lo que quiere</th><th>Lo que teme</th><th>Cómo alinearlo</th></tr>
+  <tr><td><b>George Cutts</b><br><span class="muted">capital</span></td><td>Retorno y control</td><td>Perder capital</td><td>Desembolsos condicionados y asientos en el consejo</td></tr>
+  <tr><td><b>Mario Zanardi · HEART</b><br><span class="muted">originación</span></td><td>Comisión de desarrollo y continuidad</td><td>Quedar fuera</td><td>Comisión pactada y rol de originador reconocido</td></tr>
+  <tr><td><b>Fundadores de N.A.T.</b><br><span class="muted">tecnología</span></td><td>Valor por su tecnología</td><td>Dilución y pérdida de control técnico</td><td>Licencia bien pagada y control de calidad técnica</td></tr>
+  <tr><td><b>Gobiernos</b></td><td>Viviendas entregadas y visibilidad</td><td>Obras inconclusas</td><td>Fases piloto y garantías de cumplimiento</td></tr>
+  <tr><td><b>Promotores locales</b></td><td>Margen y relación con el gobierno</td><td>Ser desplazados</td><td>Participación en la sociedad de su país</td></tr>
+</table>
+<div class="box hl" style="padding:12px 14px;gap:6px">
+  <div class="kicker" style="color:#c9a65a">El espacio vacío</div>
+  <h3 style="font-size:16px">Fabio Henríquez G. · el único independiente de la mesa</h3>
+  <p class="small" style="color:#d9d3c3">Zanardi vende la cartera y N.A.T. vende su producto. Cutts no tiene quien lea la letra pequeña. Ese es el lugar que usted ocupa.</p>
+</div>
+<p class="quote">Zanardi trae los proyectos, N.A.T. los fabrica, Cutts los paga. Usted asegura que todo esté verificado antes de que cada uno cumpla su parte.</p>`);
+
+/* 6 · NAT I */
+add('N.A.T.', `
+<div class="kicker">N.A.T. I · La pieza central</div>
+<h2>La holding <em>todavía no existe</em></h2>
+<p class="lead">La carta de Mario Zanardi habla de <i>“the proposed N.A.T. Holdings AG”</i>. Cutts entraría como accionista mayoritario de una estructura que está por diseñar, y diseñarla es trabajo de arquitectura legal.</p>
+<div class="kicker" style="color:var(--muted)">El negocio en cuatro piezas</div>
+<div class="chev">
+  <div><b>Tecnología</b><span>Sistema constructivo: el activo principal</span></div>
+  <div><b>Fábricas</b><span>Ghana, Níger, La Romana, Miami</span></div>
+  <div><b>Contratos</b><span>Vivienda con gobiernos: 29 iniciativas</span></div>
+  <div><b>Montaje</b><span>Transporte, izaje y montaje en RD</span></div>
+</div>
+<div class="cols c2">
+  <div class="box"><h3>Lo que no sabemos</h3><ul class="l small">
+    <li>Qué sociedad existe hoy, dónde está registrada y quién es su dueño.</li>
+    <li>Quién es titular de la tecnología: patentes, licencias, know-how.</li>
+    <li>Cuántas viviendas ha construido y dónde.</li>
+    <li>Qué sociedad firmó Punta Cana y si el contrato puede cederse.</li>
+    <li>Sus estados financieros.</li></ul></div>
+  <div class="box"><h3>Por qué debe estar aquí</h3><ul class="l small">
+    <li>Es donde entra el dinero de Cutts: valoración, control y protección.</li>
+    <li>La holding se construye desde cero: jurisdicción, capital, estatutos, pacto.</li>
+    <li>Sus contratos sostienen toda la cartera de vivienda.</li>
+    <li>Cada país nuevo exige sociedad local, contratos y garantías.</li></ul></div>
+</div>
+<p class="note">Una búsqueda pública no arrojó información que identifique a N.A.T. Eso no prueba nada en contra: todo debe salir de sus documentos.</p>`);
+
+/* 7 · NAT II */
+add('N.A.T.', `
+<div class="kicker">N.A.T. II · La estructura propuesta</div>
+<h2>Una holding suiza y <em>cuatro</em> ramas</h2>
+<div style="display:flex;flex-direction:column;align-items:center;gap:0">
+  <div style="background:var(--ink);color:#f4efe2;padding:8px 18px;border-radius:2px;text-align:center"><div style="font-family:var(--display);font-size:14px;font-weight:700">N.A.T. Holdings AG · Suiza</div><div style="font-size:8.6px;color:#c9c3b3">Cutts: mayoría · fundadores N.A.T. · HEART minoritario</div></div>
+  <div style="width:.75px;height:12px;background:var(--ink)"></div>
+  <div style="width:82%;height:.75px;background:var(--ink)"></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%">
+    ${[['Tecnología','licencias'],['Fábricas','SPV por país'],['Contratos','Shai Hills, Punta Cana'],['Servicios','transporte y montaje']].map(x=>`<div style="display:flex;flex-direction:column;align-items:center"><div style="width:.75px;height:10px;background:var(--ink)"></div><div class="box" style="width:100%;text-align:center;padding:6px"><b style="font-family:var(--display);font-size:11.5px;color:var(--ink)">${x[0]}</b><span class="note">${x[1]}</span></div></div>`).join('')}
+  </div>
+</div>
+<div class="box pat"><h3>Puntos jurídicos a confirmar con abogado suizo</h3><ul class="l small">
+  <li>Una AG necesita un capital mínimo de CHF 100.000.</li>
+  <li>Si los fundadores aportan la tecnología en especie, el aporte requiere informe de valoración verificado por auditor. Esa cifra define el reparto.</li>
+  <li>Debe haber al menos un representante con residencia en Suiza.</li>
+  <li>Los contratos con gobiernos casi nunca se ceden sin autorización: consentimiento o contrato nuevo.</li></ul></div>
+<div class="cols c3" style="gap:8px">
+  <div class="box"><div class="kicker">Fase 1 · ahora</div><h3>Entrada de Cutts</h3><p class="small">Due diligence de N.A.T., valoración, pacto, veto, antidilución, drag y tag-along, salida.</p></div>
+  <div class="box"><div class="kicker">Fase 2 · constitución</div><h3>Arquitecto de la holding</h3><p class="small">Constitución con notario suizo, licencia de tecnología, contrato tipo con gobiernos.</p></div>
+  <div class="box"><div class="kicker">Fase 3 · operación</div><h3>Cargo permanente</h3><p class="small">Consejero propuesto por Cutts o secretario del consejo.</p></div>
+</div>`);
+
+/* 8 · PRIORIZACIÓN */
+const prioCol = (t,s,items,c)=>`<div class="box" style="border-top:3px solid var(${c});gap:6px"><h3>${t}</h3><p class="note">${s}</p><ul class="l small">${items.map(i=>`<li>${i}</li>`).join('')}</ul></div>`;
+add('El portafolio', `
+<div class="kicker">Propuesta para discutir</div>
+<h2>Verificar primero lo que <em>ya tiene papel</em></h2>
+<p class="lead">Concentre el esfuerzo en 4 a 6 proyectos durante los primeros 90 días. Un éxito verificado da credibilidad a todo el resto.</p>
+<div class="cols c3" style="gap:8px;align-items:start">
+${prioCol('Prioridad 1 · Verificar ya','Contrato, LOI, dossier o contrato en firma.',['NAT-21 Punta Cana (✓)','NAT-01 Shai Hills, USD 588 M','NAT-19 Fábrica La Romana','HD-11 Gaborone Water City','HD-12 Pruebas diagnósticas','HD-15 Programa agrícola'],'--s3')}
+${prioCol('Prioridad 2 · Negociar','Interlocución institucional activa.',['NAT-04/06 Níger','NAT-07 Guinea','NAT-10 Côte d’Ivoire','NAT-11 Burkina Faso','NAT-14 Colombia · NAT-20 RD','HD-29/30/32/33 contratos en firma','HD-05 Topmascan · HD-35 DOMICLOR'],'--s2')}
+${prioCol('Prioridad 3 · Calificar o archivar','Sin contraparte, sin cifras o sin mandato.',['Oportunidades ○ y conceptos ◇ sin promotor','Venezuela: solo con dictamen OFAC','Minería en Ghana: tras verificar títulos','Plantas industriales: tras socio tecnológico','Fábricas N.A.T.: tras pedidos firmados'],'--s0')}
+</div>
+<div class="cols c2">
+  <div class="box"><h3>Cuatro decisiones posibles</h3><ul class="l small"><li><b>Sí:</b> cumple la meta M.</li><li><b>Sí, con condiciones:</b> el dinero entra al cumplirse X.</li><li><b>En espera:</b> se revisa en fecha fija.</li><li><b>No:</b> se archiva con acta.</li></ul></div>
+  <div class="box"><h3>Cinco preguntas por proyecto</h3><ol class="n small"><li>¿Quién paga y con qué dinero?</li><li>¿Qué pasa si no paga?</li><li>¿Cuánto se gana por unidad?</li><li>¿Cuánto capital se inmoviliza y cuánto tiempo?</li><li>¿Qué debe salir bien para que funcione?</li></ol></div>
+</div>`);
+
+/* 9-10 · FICHAS */
+const ficha = f => `<div class="ficha">
+ <div class="top"><div><div class="code">${f.code} · ${f.pais}</div><h3 style="font-size:12px">${f.t}</h3></div><div style="text-align:right"><div class="amt">${f.amt}</div><span class="pill st${f.st}">${['○ Por calificar','◇ Concepto','◐ En negociación','✓ Firmado'][f.st]}</span></div></div>
+ <dl><dt>Existe</dt><dd>${f.ex}</dd></dl><dl><dt>Falta</dt><dd>${f.fa}</dd></dl>
+ <div class="smart"><b>S</b><span>${f.S}</span><b>M</b><span>${f.M}</span><b>T</b><span>${f.T}</span></div></div>`;
+add('Prioridad 1', `
+<div class="kicker">Prioridad 1 · fichas SMART (I)</div>
+<h2>Lo que puede <em>probarse</em> primero</h2>
+${ficha({code:'NAT-21',pais:'Rep. Dominicana',t:'Contrato inicial en Punta Cana',amt:'Por definir',st:3,ex:'Contrato firmado con cantidades, precio, anticipo y plazos.',fa:'Aprobación gubernamental de la tecnología y financiador.',S:'Ejecutar el contrato con financiación cerrada.',M:'Contrato verificado, anticipo cobrado y tecnología aprobada.',T:'Financiación cerrada: 16 feb 2027.'})}
+${ficha({code:'NAT-01',pais:'Ghana',t:'10.000 apartamentos en Shai Hills · Greenwich Prop. LTD',amt:'USD 588 M',st:2,ex:'Acuerdo de 2020 y LOI de un fondo sobre el modelo financiero.',fa:'Adenda del acuerdo y contrato industrial de N.A.T.',S:'Cerrar adenda y contrato industrial.',M:'Adenda firmada, títulos verificados y fondo comprometido.',T:'Firma de ambos contratos: 16 feb 2027.'})}
+${ficha({code:'NAT-19',pais:'Rep. Dominicana',t:'Fábrica en Villa Hermosa / La Romana',amt:'USD 7,5 M',st:1,ex:'Dossier industrial y financiero; búsqueda de terreno.',fa:'Configuración, compra del terreno y permisos.',S:'Asegurar terreno y aprobar el primer tramo.',M:'Pedidos firmados, terreno asegurado y CAPEX auditado.',T:'Decisión de inversión: 16 feb 2027.'})}`);
+add('Prioridad 1', `
+<div class="kicker">Prioridad 1 · fichas SMART (II)</div>
+<h2>Botsuana: <em>tres</em> contratos en firma</h2>
+${ficha({code:'HD-11',pais:'Botsuana',t:'Gaborone Water City · The Firm Strategic Inv. Ltd',amt:'USD 1.000 M',st:2,ex:'Concepto urbano y de inversión; APP propuesta.',fa:'Firma del contrato del paquete técnico-financiero.',S:'Firmar el contrato del paquete.',M:'Contrato firmado, títulos verificados y fase 1 cuantificada.',T:'Firma: 15 ene. Decisión de obra: 16 feb 2027.'})}
+${ficha({code:'HD-12',pais:'Botsuana',t:'Planta de pruebas diagnósticas, 20-40 M/año',amt:'USD 1,5 M',st:2,ex:'Concepto industrial; contrato del paquete en firma.',fa:'Socio tecnológico, ruta regulatoria y comprador ancla.',S:'Cerrar el plan con socio y comprador ancla.',M:'Socio firmado, ruta BoMRA escrita y comprador ancla.',T:'Decisión de inversión: 16 feb 2027.'})}
+${ficha({code:'HD-15',pais:'Botsuana',t:'Programa agrícola y agroindustrial, 13 componentes',amt:'USD 27,15 M',st:2,ex:'Masterplan técnico-económico; contrato en firma.',fa:'Firma, conciliar costes compartidos, verificar agua y tierra.',S:'Firmar el paquete y aprobar la fase 1.',M:'Contrato firmado, agua y tierra verificadas, fase 1 cerrada.',T:'Fase 1 elegida: 16 feb 2027.'})}`);
+
+/* 11 · DIEZ CONDICIONES */
+add('Condiciones', `
+<div class="kicker">Antes de cualquier proyecto</div>
+<h2>Diez condiciones a nivel de <em>holding</em></h2>
+<p class="lead">Aplican a la participación mayoritaria en N.A.T. Holdings AG y a cada financiación por proyecto. Si una falla, el proceso se detiene.</p>
+<div style="display:flex;flex-direction:column">
+${['Identidad jurídica y accionistas de HEART DEVELOPMENT y de N.A.T. Holdings AG, con registro mercantil.','Beneficiarios finales de promotores y desarrolladores locales.','Contratos firmados y documentos de gobierno verificables.','Titularidad de terrenos, licencias y concesiones.','Estudios técnicos y económicos de cada proyecto.','CAPEX, OPEX, presupuesto y cronograma.','Estructura financiera y garantías.','Quién recibe, administra y controla el capital.','Derechos económicos y societarios de George Cutts.','Responsabilidades y mecanismos de salida del inversionista.'].map((c,i)=>`<div style="display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:baseline;padding:4px 0;border-bottom:.75px solid var(--rule)"><span style="font-family:var(--display);font-weight:700;font-size:16px;color:var(--brass)">${String(i+1).padStart(2,'0')}</span><span style="font-size:10.4px">${c}</span></div>`).join('')}
+</div>
+<div class="box"><h3>Las cuatro capas de la due diligence</h3><p class="small"><b>1 Existencia</b> (registros: Zefix, Registrar of Companies, CIPA, Registro Mercantil) · <b>2 Propiedad</b> (beneficiarios finales) · <b>3 Integridad</b> (OFAC, ONU, UE, OFSI, Banco Mundial) · <b>4 Capacidad</b> (finanzas, referencias, visitas). Si una capa falla, no se pasa a la siguiente.</p></div>`);
+
+/* 12 · GOBIERNO */
+add('Gobierno del proceso', `
+<div class="kicker">Gobierno del proceso</div>
+<h2>Cada uno dirige <em>lo que conoce</em></h2>
+<table class="t">
+  <tr><th style="width:22%">Actor</th><th>Dirige</th><th>Por qué él</th><th>No le corresponde</th></tr>
+  <tr><td><b>George Cutts</b></td><td>La decisión de invertir y el capital</td><td>Arriesga su dinero</td><td>Verificar documentos o negociar con gobiernos</td></tr>
+  <tr><td><b>Mario Zanardi</b></td><td>Relación con gobiernos y promotores</td><td>Tiene los contactos</td><td>Decidir la inversión o validar sus propios proyectos</td></tr>
+  <tr><td><b>N.A.T.</b></td><td>Producto, fábricas, costos y plazos</td><td>Tiene la tecnología</td><td>Dirigir la estructura de la holding</td></tr>
+  <tr><td><b>Gobiernos y promotores</b></td><td>Tierra, permisos, pago y garantías</td><td>Son dueños de esos activos</td><td>Definir cómo invierte Cutts</td></tr>
+  <tr style="background:rgba(47,116,105,.09)"><td><b>Fabio Henríquez G.</b></td><td><b>El proceso:</b> verificación, estructura legal, comités y documentación</td><td>Es el único independiente</td><td>Vender proyectos, negociar por HEART o manejar dinero</td></tr>
+  <tr><td><b>Terceros</b></td><td>Su especialidad: abogado suizo, geólogo, auditor, tasador</td><td>Opinión técnica indiscutible</td><td>Decidir</td></tr>
+</table>
+<div class="cols c2">
+  <div class="box"><h3>Cómo dirige usted el proceso</h3><ol class="n small"><li>Con calendario: cada etapa tiene fecha.</li><li>Con listas: avanza la lista completa, no la petición.</li><li>Con un solo canal: todo al data room.</li><li>Con informes de una página.</li><li>Con el comité: decisiones en acta.</li></ol></div>
+  <div class="box"><h3>Señales de que el gobierno falla</h3><ul class="l small"><li>Zanardi negocia términos de inversión con Cutts sin usted.</li><li>N.A.T. pide anticipos antes del comité.</li><li>Decisiones en llamadas, sin acta.</li><li>“Solo una firma rápida”.</li><li>Un proyecto llega a Cutts sin calificación.</li></ul></div>
+</div>
+<div class="say"><div class="en">“Let’s take it to the next committee with its memo.”</div><div class="es">Lo incluimos en el próximo comité con su memorando.</div></div>`);
+
+/* 13 · CADENA */
+const stg = [['Originación','Zanardi · continuo','Identificar proyecto y contraparte.','No participa','r-no'],['Calificación','Usted con Zanardi · antes del 16 dic','¿Hay contraparte, interés escrito y cifras?','Dirige','r-lead'],['Due diligence','Usted · 16 nov a 15 ene','Existencia, propiedad, integridad, capacidad.','Dirige','r-lead'],['Propuesta técnica','N.A.T. · en paralelo','Producto, precio, capacidad, plazos.','Revisa','r-rev'],['Estructuración','Usted con Cutts · dic a feb','Holding, SPV, term sheet, garantías.','Dirige','r-lead'],['Negociación','Cutts decide · ene a feb','Valoración, control, condiciones.','Negocia','r-neg'],['Decisión','Cutts en comité · 16 dic, 15 ene, 16 feb','Aprobar, condicionar o descartar.','Presenta y redacta acta','r-rev'],['Cierre','Usted y abogados locales','Firmas, registros, condiciones.','Dirige','r-lead'],['Desembolso','Cutts y su banco · solo con M','Liberar el dinero por tramos.','Certifica','r-rev'],['Ejecución','N.A.T. y promotor local','Construir y entregar.','Supervisa','r-rev'],['Seguimiento','Usted informa, Cutts controla','Reportes mensuales y alertas.','Prepara el informe','r-rev']];
+add('Gobierno del proceso', `
+<div class="kicker">La cadena de un proyecto</div>
+<h2>Once etapas, <em>su papel</em> en cada una</h2>
+<div class="chain">${stg.map((s,i)=>`<div class="st"><span class="k">${i+1}</span><div><h3>${s[0]}</h3><p>${s[1]} · ${s[2]}</p></div><div class="rcol"><span class="role ${s[4]}">${s[3]}</span></div></div>`).join('')}</div>
+<p class="small">Usted entra para verificar, estructurar, documentar o decidir. Se aparta cuando se vende, se presenta o se mueve dinero.</p>`);
+
+/* 14 · ROL */
+add('Su rol', `
+<div class="kicker">Su rol</div>
+<h2>Cuatro escenarios, <em>una</em> secuencia</h2>
+<div class="cols c2" style="gap:8px">
+  <div class="box hl"><div class="kicker" style="color:#c9a65a">A · Recomendado</div><h3>Asesor del inversionista</h3><p class="small" style="color:#d9d3c3">Trabaja para Cutts: due diligence, dictámenes, estructura y contratos. Autoridad en la mesa y riesgo bajo.</p></div>
+  <div class="box"><div class="kicker">B</div><h3>Asesor de HEART y N.A.T.</h3><p class="small">Ordena el portafolio para hacerlo invertible. Más volumen, pero si un proyecto resulta inflado, usted lo presentó. Solo si Cutts tiene su propio abogado.</p></div>
+  <div class="box"><div class="kicker">C</div><h3>Socio o comisionista</h3><p class="small">Mayor potencial económico; pierde independencia y puede necesitar licencia para cobrar por captar inversión. Más adelante y por escrito.</p></div>
+  <div class="box"><div class="kicker">D</div><h3>Retirarse</h3><p class="small">Si no entregan KYC, hay problemas de sanciones o le piden mover fondos. Retirarse a tiempo protege su nombre.</p></div>
+</div>
+<div class="box pat"><h3>La secuencia más sólida</h3><p class="small"><b>A</b> durante la verificación (90 días) → asesoría a las SPV aprobadas, con consentimiento escrito de todos → <b>C</b> solo al final, por escrito y conocida por todos los socios.</p></div>
+<div class="cols c2">
+  <div><h3 style="margin-bottom:4px">Límites desde el principio</h3><ul class="l small"><li>Un solo cliente: Cutts.</li><li>Honorarios independientes del cierre.</li><li>No recibe ni administra fondos.</li><li>Puede declarar que un proyecto no pasa, sin penalización.</li></ul></div>
+  <div><h3 style="margin-bottom:4px">Lo que hace en concreto</h3><ol class="n small"><li>Verifica condiciones y metas M.</li><li>Dictámenes de sanciones y KYC/AML.</li><li>Estructura holding y SPV.</li><li>Redacta y negocia acuerdos.</li><li>Lleva la secretaría del comité.</li></ol></div>
+</div>`);
+
+/* 15 · REUNIONES */
+add('Reuniones', `
+<div class="kicker">Las reuniones</div>
+<h2>Ocho reuniones <em>donde debe estar</em></h2>
+<table class="t">
+  <tr><th>#</th><th style="width:28%">Reunión</th><th>Cuándo</th><th>Su papel</th><th style="width:33%">Debe salir</th></tr>
+  <tr><td>0</td><td><b>Usted con Cutts, a solas</b></td><td>Antes del 16 nov</td><td>Definir mandato</td><td>Carta de mandato firmada, sin conflictos</td></tr>
+  <tr><td>1</td><td><b>Arranque</b>: Cutts, Zanardi, N.A.T.</td><td>Semana 16 nov</td><td>Presentar reglas</td><td>NDA, data room, prioridades, regla de la meta M</td></tr>
+  <tr><td>2</td><td><b>KYC de la holding</b></td><td>Fines de nov</td><td>Lleva la revisión</td><td>Registro de la AG, accionistas, beneficiarios, estados financieros</td></tr>
+  <tr><td>3</td><td><b>Punta Cana</b></td><td>Inicios de dic</td><td>Revisa el contrato</td><td>Contrato íntegro, anticipo y aprobación técnica</td></tr>
+  <tr><td>4</td><td><b>Shai Hills</b>: Greenwich y fondo</td><td>Inicios de dic</td><td>Revisa adenda y LOI</td><td>Calendario de firma y condiciones del fondo</td></tr>
+  <tr><td>5</td><td><b>Comité 1</b></td><td>16 dic</td><td>Secretario técnico</td><td>Proyectos calificados, descartados o archivados</td></tr>
+  <tr><td>6</td><td><b>Term sheets</b></td><td>Dic y ene</td><td>Negociador</td><td>Términos de entrada por proyecto</td></tr>
+  <tr><td>7</td><td><b>Comités 2 y 3</b></td><td>15 ene · 16 feb</td><td>Dictamen final</td><td>Aprobados, condicionados o descartados, con acta</td></tr>
+</table>
+<div class="cols c2">
+  <div class="box"><h3>Reuniones propias de N.A.T.</h3><ul class="l small"><li>Sesión técnica con fundadores: tecnología, PI, capacidad.</li><li>Visita a una fábrica o proyecto construido.</li><li>Taller de estructura con Cutts y abogado suizo.</li><li>Negociación del pacto de accionistas.</li><li>Constitución ante notario suizo.</li></ul></div>
+  <div class="box"><h3>Con gobiernos</h3><p class="small"><b>Entra</b> cuando se discuten contratos, garantías o pagos.</p><p class="small"><b>No entra</b> en presentaciones comerciales: quedaría como promotor.</p><p class="small"><b>Nunca</b> en reuniones sobre transferencias o movimiento de fondos, salvo para revisar documentos.</p></div>
+</div>`);
+
+/* 16 · AGENDA */
+add('Agenda', `
+<div class="kicker">Agenda maestra · 90 días</div>
+<h2>Cuatro fases con <em>entregable y fecha</em></h2>
+<div class="phase">
+  <div><span class="d">16 – 30 nov 2026</span><h3>Arranque</h3><ul class="l small"><li>NDA y mandato</li><li>Data room abierto</li><li>Prioridades aprobadas</li><li>Responsable por proyecto</li></ul></div>
+  <div><span class="d">1 – 16 dic 2026</span><h3>Hito 1</h3><ul class="l small"><li>KYC de HEART, N.A.T. y promotores</li><li>Documentos de Prioridad 1</li><li>○ calificadas o archivadas</li></ul></div>
+  <div><span class="d">17 dic – 15 ene</span><h3>Hito 2</h3><ul class="l small"><li>Due diligence Prioridad 1</li><li>Term sheets borrador</li><li>Dictámenes de sanciones</li></ul></div>
+  <div><span class="d">16 ene – 16 feb</span><h3>Hito 3</h3><ul class="l small"><li>Comité de inversión</li><li>Aprobados o descartados</li><li>Estructura de la holding</li></ul></div>
+</div>
+<div class="gate"><span>Comité 1 · 16 dic 2026</span><span>Comité 2 · 15 ene 2027</span><span>Comité 3 · 16 feb 2027</span></div>
+<div class="box hl"><div class="kicker" style="color:#c9a65a">Meta medible del programa</div><p style="font-family:var(--display);font-size:14px;line-height:1.3;color:#f4efe2">Al 16 de febrero de 2027, cada proyecto de Prioridad 1 tiene decisión documentada de comité: aprobar, condicionar o descartar.</p></div>
+<div><h3 style="margin-bottom:5px">El ritmo semanal</h3>
+<table class="t"><tr><th style="width:24%">Día</th><th>Foco</th></tr>
+<tr><td><b>Lunes</b></td><td>Planificar: pendientes, vencimientos y solicitudes de documentos</td></tr>
+<tr><td><b>Martes a jueves</b></td><td>Ejecutar: documentos, reuniones, screening y redacción</td></tr>
+<tr><td><b>Viernes</b></td><td>Informar: reporte a Cutts y actualización del Mapa Maestro</td></tr>
+<tr><td><b>Cada día</b></td><td>Media hora de estudio y lectura de la minuta de la víspera</td></tr></table></div>`);
+
+/* 17 · CUÁNDO ENTRA */
+add('Agenda', `
+<div class="kicker">Su calendario de participación</div>
+<h2>Cuándo <em>entra</em> usted</h2>
+<table class="t">
+<tr><th style="width:44%">Momento</th><th>Su acción</th></tr>
+<tr><td>Esta semana</td><td>Reunión a solas con Cutts y firma del mandato</td></tr>
+<tr><td>Semana del 16 nov</td><td>Abre el proceso y presenta las reglas</td></tr>
+<tr><td>Todos los lunes</td><td>Pide documentos y revisa vencimientos</td></tr>
+<tr><td>Todos los viernes</td><td>Informe a Cutts</td></tr>
+<tr><td>Cuando llega un contrato</td><td>Lo revisa antes de que nadie lo firme</td></tr>
+<tr><td>Un gobierno discute garantías o pagos</td><td>Entra en la reunión</td></tr>
+<tr><td>Un gobierno hace presentación comercial</td><td>No entra</td></tr>
+<tr><td>Antes de cada comité</td><td>Envía memorandos con 5 días de antelación</td></tr>
+<tr><td>En cada comité</td><td>Presenta y redacta el acta</td></tr>
+<tr><td>Antes de cada desembolso</td><td>Certifica por escrito la condición cumplida</td></tr>
+<tr><td>Aparece una señal grave</td><td>Detiene el proyecto y avisa a Cutts el mismo día</td></tr>
+</table>
+<div class="box pat"><h3>Cinco preguntas para reaprender en cada etapa</h3><ol class="n small">
+<li>¿Quién debería dirigir esto ahora? Si no es quien lo hace, hay un problema de gobierno.</li>
+<li>¿Qué documento prueba que esta etapa terminó?</li>
+<li>¿Qué decisión se necesita y quién la toma?</li>
+<li>¿Qué pasa si falla y quién asume el costo?</li>
+<li>¿Cuál es mi papel: dirijo, reviso, presento, certifico o me aparto?</li></ol></div>`);
+
+/* 18 · PENSAR Y ACTUAR */
+add('El asesor', `
+<div class="kicker">Cómo pensar y actuar</div>
+<h2>Proteja el <em>proceso</em>, no el negocio</h2>
+<p class="lead">Si el proceso es sólido, los buenos proyectos avanzan solos y los malos se caen sin que usted tenga que enfrentarse a nadie.</p>
+<div class="cols c2" style="gap:10px">
+<div><h3 style="margin-bottom:5px">Cómo pensar</h3><ul class="l small">
+<li><b>Hecho, afirmación o promesa.</b> Clasifique todo lo que oiga. El dossier es casi todo afirmaciones y promesas.</li>
+<li><b>El documento manda.</b> No juzgue personas, verifique papeles.</li>
+<li><b>La prisa es una señal.</b> Nadie pierde un contrato serio porque el abogado pidió dos semanas.</li>
+<li><b>Su independencia es su activo.</b> Si parece que gana con la firma, su opinión deja de valer.</li>
+<li><b>Piense en el peor día:</b> qué leerá alguien en dos años de lo que usted firmó.</li></ul></div>
+<div><h3 style="margin-bottom:5px">Cómo actuar</h3><ul class="l small">
+<li>Prepare cada reunión con tres preguntas escritas: qué quiero saber, qué quiero obtener, qué no concedo.</li>
+<li>Escuche primero y hable al final: quien resume, controla.</li>
+<li>Nunca decida en la mesa: “lo reviso y respondo por escrito el [fecha]”.</li>
+<li>Minuta el mismo día.</li>
+<li>Documentos por escrito y con fecha.</li>
+<li>No firme por nadie ni reenvíe sin autorización.</li></ul></div>
+</div>
+<div class="box"><h3>Jerarquía de la prueba</h3><p class="small">1 Registro público o certificado · 2 Contrato firmado con poderes · 3 Carta oficial con referencia · 4 Correo de funcionario identificado · 5 Dossier del promotor · 6 Lo dicho de palabra. Casi todo el portafolio está hoy en los niveles 5 y 6.</p></div>
+<div class="box"><h3>Decidir bajo presión</h3><p class="small">¿Es reversible? ¿Tengo el documento? ¿A quién represento? ¿Podría explicarlo por escrito en dos años? ¿Me beneficia personalmente? ¿Lo peor que puede pasar es aceptable?</p></div>`);
+
+/* 19 · HABLAR */
+add('El asesor', `
+<div class="kicker">Cómo hablar</div>
+<h2>Calma, precisión, <em>sin adjetivos</em></h2>
+<div class="box pat"><h3>La fórmula: reconoce, condición, plazo</h3><p class="small">“Es un proyecto interesante. Para llevarlo al comité necesito el contrato firmado y los títulos. Si los tengo el viernes, lo presento el 16.”</p></div>
+<div class="cols c2" style="gap:10px">
+<div><h3 style="margin-bottom:5px">Frases que no usa</h3><ul class="l small"><li>“Esto está aprobado.”</li><li>“No se preocupe, eso se arregla.”</li><li>“Confíe en mí.”</li><li>“Seguro que el gobierno firma.”</li><li>“Excelente proyecto”, “oportunidad única”.</li></ul></div>
+<div style="display:flex;flex-direction:column;gap:5px">
+<div class="say"><div class="en">“I’m not saying no. I’m saying not yet, and here is exactly what’s missing.”</div><div class="es">No digo que no. Todavía no, y esto es lo que falta.</div></div>
+<div class="say"><div class="en">“What document supports that?”</div><div class="es">¿Qué documento respalda eso?</div></div>
+<div class="say"><div class="en">“Let’s put that in writing.”</div><div class="es">Pongámoslo por escrito.</div></div>
+</div></div>
+<div><h3 style="margin-bottom:5px">En la mesa</h3><ul class="l small"><li><b>Abra con el marco:</b> tres puntos y cierre con responsables y fechas.</li><li><b>Preguntas abiertas:</b> “¿Cómo se paga?” rinde más que “¿Hay garantía?”.</li><li><b>Use el silencio</b> después de una pregunta difícil.</li><li><b>Nombre las tensiones:</b> “Parece que el plazo preocupa más que el precio.”</li><li><b>Cierre con resumen</b> en voz alta. Sepa su alternativa: la de Cutts es no invertir.</li></ul></div>
+<div class="box hl"><div class="kicker" style="color:#c9a65a">Mensaje de arranque en tres frases</div><ol class="n small" style="color:#ece7da"><li>Mi función es que cada proyecto llegue al comité con los documentos que lo respaldan.</li><li>Ningún capital se compromete hasta que el proyecto cumpla su condición de avance.</li><li>En 90 días, cada proyecto prioritario tendrá una decisión documentada.</li></ol></div>`);
+
+/* 20-21 · BAJO PRESIÓN */
+const sc = (t,piense,diga)=>`<div class="s"><div><h3>${t}</h3><p class="m">${piense}</p></div><div class="say" style="align-self:start"><span class="es" style="color:var(--text);font-size:9.3px">${diga}</span></div></div>`;
+add('El asesor', `
+<div class="kicker">Escenarios bajo presión (I)</div>
+<h2>Qué piensa y qué <em>dice</em></h2>
+<div class="scn">
+${sc('“El gobierno quiere respuesta esta semana.”','La urgencia de otros no es la suya. Pida la comunicación que fija ese plazo.','“Si el plazo es real, envíeme el documento y priorizo el proyecto. Sin documento, sigue el calendario acordado.”')}
+${sc('Le piden hablar bien de un proyecto ante Cutts','Usted informa, no promueve.','“Le presentaré lo verificado y lo que falta. Si el proyecto es bueno, los documentos lo demostrarán.”')}
+${sc('N.A.T. entrega documentos incompletos','No lo interprete aún: regístrelo, recuerde con fecha y, si se repite, informe a Cutts.','“Recibimos 5 de 8 documentos. Sin los 3 restantes, N.A.T. no va al comité del 16.”')}
+${sc('Cutts se entusiasma y quiere invertir ya','Su cliente también necesita protección frente a sí mismo.','“Firmemos la intención, pero el dinero entra solo cuando se cumplan estas tres condiciones.”')}
+${sc('Le ofrecen una comisión o participación','Durante la due diligence anula su independencia. Informe a Cutts.','“Se lo agradezco. Mientras asesore al Sr. Cutts no puedo aceptarla. Más adelante, con todos los socios y por escrito.”')}
+</div>`);
+add('El asesor', `
+<div class="kicker">Escenarios bajo presión (II)</div>
+<h2>Donde <em>no</em> se negocia</h2>
+<div class="scn">
+${sc('Señal grave','Pago para “liberar” un contrato, transferencia a tercero, sanciones, dueños ocultos. Detenga, avise por escrito y no siga en esa línea.','“Este punto impide continuar. Lo reanudamos cuando esté resuelto y documentado.”')}
+${sc('Un “pago de facilitación”','Riesgo penal para todos. FCPA y UK Bribery Act alcanzan a personas fuera de EE. UU. y Reino Unido.','“Solo trabajamos con pagos contractuales, facturados y con destino identificado.” Deje constancia escrita.')}
+${sc('“Todavía no necesitamos abogado.”','Es justo cuando más se necesita.','“Llegar al cierre sin revisión cuesta más tiempo. Si un contrato falla después, se pierde el proyecto completo.”')}
+${sc('Cutts y Zanardi chocan por la valoración de N.A.T.','Representa a Cutts, pero le conviene un acuerdo sostenible.','“En vez de discutir el número, acordemos cómo se calcula”: valoración independiente, pagos por hitos.')}
+</div>
+<div class="box"><h3>Preguntas hostiles</h3><table class="t">
+<tr><td style="width:40%">“¿Usted no confía en nosotros?”</td><td>“Mi trabajo es que todo quede documentado, y eso también los protege.”</td></tr>
+<tr><td>“Otros inversionistas no piden tanto.”</td><td>“Puede ser. El Sr. Cutts invierte con este estándar.”</td></tr>
+<tr><td>“Esto retrasa el proyecto.”</td><td>“Lo que retrasa es descubrir un problema después de firmar.”</td></tr>
+<tr><td>“¿Quién es usted para decidir?”</td><td>“No decido yo. Presento la información y el Sr. Cutts decide.”</td></tr></table></div>`);
+
+/* 22 · RIESGO */
+add('Riesgo', `
+<div class="kicker">Riesgo y posicionamiento</div>
+<h2>Siete riesgos, <em>incluido</em> el suyo</h2>
+<table class="t">
+<tr><th style="width:21%">Riesgo</th><th>En esta cartera</th><th>Mitigación</th></tr>
+<tr><td><b>Legal</b></td><td>Contratos sin firmar o no cedibles</td><td>Revisión de poderes y consentimientos</td></tr>
+<tr><td><b>Sanciones</b></td><td>Venezuela, RCA, Sahel</td><td>Dictamen previo y cláusulas de sanciones</td></tr>
+<tr><td><b>País</b></td><td>Golpes de Estado, cambios de gobierno</td><td>Seguro de riesgo político (MIGA, ECA)</td></tr>
+<tr><td><b>Contraparte</b></td><td>Promotores sin historial</td><td>KYC y garantías</td></tr>
+<tr><td><b>Ejecución</b></td><td>Fábricas sin instalar</td><td>Desembolsos ligados a hitos</td></tr>
+<tr><td><b>Reputacional</b></td><td>Minería en zonas de conflicto</td><td>Guía OCDE y trazabilidad</td></tr>
+<tr style="background:rgba(47,116,105,.09)"><td><b>Personal</b></td><td>Responsabilidad por un dictamen</td><td>Las seis protecciones de abajo</td></tr>
+</table>
+<div class="cols c2">
+<div class="box"><h3>Cómo protegerse</h3><ul class="l small"><li>Mandato con alcance y límite de responsabilidad.</li><li>Seguro de responsabilidad profesional internacional.</li><li>KYC de su propio cliente y de sus fondos.</li><li>Nota de alcance en cada informe: “documentos recibidos al [fecha]”.</li><li>Sin fondos, sin poderes de disposición, sin garantías personales.</li><li>Archivo ordenado de todo.</li></ul></div>
+<div class="box"><h3>Su posicionamiento</h3><ul class="l small"><li><b>Imagen:</b> el que ordena y verifica.</li><li><b>Repite:</b> proceso, documentos, plazos.</li><li><b>Gana autoridad</b> cumpliendo cada fecha que fija.</li><li><b>No publica</b> nada de la operación ni menciona a Cutts ante terceros.</li><li><b>No presenta</b> el proyecto a otros inversionistas sin autorización.</li></ul></div>
+</div>
+<p class="quote" style="font-size:15px">Piense como auditor, hable como diplomático, actúe como director de proyecto.</p>`);
+
+/* 23 · HONORARIOS Y GASTOS */
+add('Honorarios y gastos', `
+<div class="kicker">Honorarios y gastos</div>
+<h2>Los honorarios los <em>propone</em> el cliente</h2>
+<p class="lead">El alcance de la Fase 1 está descrito en esta edición. Sobre esa base, el cliente expresa los honorarios que puede pagar. Aparte de los honorarios, cubre los gastos que el mandato genere.</p>
+<div class="say"><div class="en">“I’d like you to tell me what fee you can offer for this scope. Operating costs, travel, meetings, documentation and official translations are covered separately.”</div><div class="es">Me gustaría que me indicara qué honorarios puede ofrecer por este alcance. Los gastos operativos, viajes, reuniones, documentación y traducciones oficiales se cubren aparte.</div></div>
+<table class="t">
+<tr><th style="width:27%">Gasto cubierto</th><th>Incluye</th></tr>
+<tr><td><b>Gastos operativos</b></td><td>Data room, comunicaciones, mensajería, consultas en registros y bases de sanciones</td></tr>
+<tr><td><b>Viajes</b></td><td>Traslados, alojamiento y viáticos a cada país y a cada reunión</td></tr>
+<tr><td><b>Reuniones</b></td><td>Salas, logística y videoconferencia</td></tr>
+<tr><td><b>Documentación</b></td><td>Certificados registrales, notarías, apostillas y copias certificadas</td></tr>
+<tr><td><b>Traducciones oficiales</b></td><td>Traductor jurado o público, del idioma de origen de cada documento al idioma oficial del gobierno local. Por ejemplo: inglés → francés en Níger o Côte d’Ivoire; inglés o francés → español en República Dominicana.</td></tr>
+</table>
+<div class="cols c2" style="gap:8px">
+<div class="box"><h3>Cómo se cubren</h3><ul class="l small"><li>Presupuesto aprobado por el cliente antes de cada viaje o encargo.</li><li>Pago directo al proveedor o reembolso contra factura.</li><li>Relación mensual de gastos con comprobantes.</li></ul></div>
+<div class="box"><h3>Lo que no cambia</h3><ul class="l small"><li>Honorarios independientes del cierre de cualquier proyecto.</li><li>Los paga el cliente, no HEART ni N.A.T.</li><li>Los gastos no forman parte de los honorarios.</li></ul></div>
+</div>
+<p class="note">El monto de los honorarios queda abierto hasta recibir la propuesta del cliente.</p>`);
+
+/* 24-25 · FORMACIÓN */
+add('Formación', `
+<div class="kicker">Formación I · Lo que debe aprender</div>
+<h2>Cómo contrata un <em>Estado</em></h2>
+<div class="chev" style="grid-template-columns:repeat(5,1fr)">
+<div><b>Ministerio</b><span>Define y negocia</span></div><div><b>Finanzas</b><span>Presupuesto y garantía</span></div><div><b>Procuraduría</b><span>Opinión legal</span></div><div><b>Parlamento</b><span>Préstamos grandes</span></div><div><b>Presidencia</b><span>Impulso, no firma</span></div></div>
+<p class="small">Verifique siempre: facultad del firmante, licitación o adjudicación directa, partida presupuestaria, garantía emitida o solo prometida, programa con el FMI que limite deuda.</p>
+<table class="t"><tr><th style="width:24%">Sistema</th><th style="width:36%">Países</th><th>Clave</th></tr>
+<tr><td><b>OHADA</b></td><td>Níger, Guinea, Gabón, Côte d’Ivoire, Burkina Faso, Benín, Malí, Togo, Rep. del Congo, Senegal, RCA</td><td>Un derecho de sociedades y garantías para 11 países</td></tr>
+<tr><td><b>Common law</b></td><td>Ghana, Sierra Leona, Botsuana, Tanzania</td><td>Contratos de estilo inglés; leyes propias de minería y APP</td></tr>
+<tr><td><b>Civil latino</b></td><td>Colombia, Venezuela, RD, Haití</td><td>Colombia: Ley 80/1993 y Ley 1508/2012 · RD: Ley 47-20</td></tr></table>
+<table class="t"><tr><th style="width:30%">Financiación</th><th>Qué es y por qué importa</th></tr>
+<tr><td><b>Project finance</b></td><td>Se paga con los flujos del proyecto: estructura de cada SPV</td></tr>
+<tr><td><b>Garantía soberana</b></td><td>El Estado garantiza el pago; sin ella nadie financia en África</td></tr>
+<tr><td><b>ECA</b></td><td>SACE (Italia), SERV (Suiza): pueden financiar tecnología exportada</td></tr>
+<tr><td><b>MIGA</b></td><td>Seguro de riesgo político del Banco Mundial</td></tr>
+<tr><td><b>Multilaterales</b></td><td>BAfD, Afreximbank, BID cofinancian vivienda e infraestructura</td></tr>
+<tr><td><b>Escrow y step-in</b></td><td>Cuenta controlada, cascada de pagos, intervención del financiador</td></tr></table>`);
+add('Formación', `
+<div class="kicker">Formación II · Herramientas y plan</div>
+<h2>Trece herramientas, <em>doce</em> semanas</h2>
+<div class="cols c3" style="gap:8px">
+<div class="box"><h3>Protección</h3><p class="small">Tratados bilaterales y arbitraje CIADI. Revise los tratados de Suiza con cada país: la holding puede proteger a Cutts.</p></div>
+<div class="box"><h3>Cumplimiento</h3><p class="small">Sanciones OFAC, ONU, UE, Reino Unido · AML/KYC · FCPA y UK Bribery Act · Guía OCDE minera.</p></div>
+<div class="box"><h3>Fiscalidad</h3><p class="small">Retenciones, convenios de doble imposición, precios de transferencia, control de cambios.</p></div></div>
+<div><h3 style="margin-bottom:5px">Caja de herramientas</h3><ul class="check">
+<li>Carta de mandato</li><li>Presupuesto de gastos</li><li>NDA bilingüe</li><li>Listas de documentos por tipo</li><li>Índice del data room</li><li>Protocolo de screening y KYC</li><li>Matriz de señales de alerta</li><li>Informe de due diligence</li><li>Plantilla de minuta</li><li>Memorando al comité</li><li>Ficha país</li><li>Cláusulas con gobiernos</li><li>Term sheet de N.A.T. Holdings AG</li></ul></div>
+<table class="t"><tr><th style="width:17%">Semana</th><th>Trabajo</th><th style="width:31%">Estudio</th></tr>
+<tr><td>1 · 9–15 nov</td><td>Mandato con Cutts y su KYC</td><td>AG suiza y holdings</td></tr>
+<tr><td>2 · 16–22 nov</td><td>Arranque y data room</td><td>Contratación pública</td></tr>
+<tr><td>3–4</td><td>KYC de HEART y N.A.T.; Punta Cana y Shai Hills</td><td>Sanciones, AML, garantías</td></tr>
+<tr><td>5–6</td><td>Botsuana y Comité 1 (16 dic)</td><td>Common law, APP, comités</td></tr>
+<tr><td>7–10</td><td>Term sheet N.A.T.; Prioridad 2</td><td>Project finance, ECA, MIGA, OHADA</td></tr>
+<tr><td>11–13</td><td>Comités 2 y 3; holding final</td><td>Tratados, arbitraje, fiscalidad</td></tr></table>`);
+
+/* 26 · CIERRE */
+add('Cierre', `
+<div class="kicker">Reunión con George Cutts y Mario Zanardi</div>
+<h2>Seis decisiones para <em>salir</em> de la reunión</h2>
+<ol class="n" style="font-size:11px;gap:7px">
+<li>Aprobar la priorización en tres niveles.</li>
+<li>Firmar NDA y abrir el data room del portafolio.</li>
+<li>Asignar responsable y presupuesto de due diligence.</li>
+<li>Regla: ningún desembolso sin cumplir la meta M del proyecto.</li>
+<li>Hoja de términos para N.A.T. Holdings AG.</li>
+<li>Calendario de comités: 16 dic, 15 ene y 16 feb.</li></ol>
+<div class="rule"></div>
+<h3>Reglas de oro</h3>
+<div class="cols c2" style="gap:6px 14px">
+${['Pida el documento antes de opinar.','Diga “lo reviso” antes de decir sí.','Ponga por escrito todo lo acordado.','No ponga dinero sin condición cumplida.','No acepte beneficios ocultos.','Ante una señal grave, deténgase y avise.','Tono sereno: quien no tiene prisa ni interés oculto dirige la mesa.'].map((r,i)=>`<div style="display:grid;grid-template-columns:18px 1fr;gap:4px;font-size:10px"><span style="font-family:var(--display);font-weight:700;color:var(--brass)">${i+1}</span><span>${r}</span></div>`).join('')}
+</div>
+<div style="flex:1"></div>
+<div class="box hl" style="padding:13px 15px"><div class="kicker" style="color:#c9a65a">Fase 2 · siguiente edición</div><p style="font-family:var(--display);font-size:15px;line-height:1.3;color:#f4efe2">Carta de mandato, solicitud formal de documentos a HEART y N.A.T., y guion completo de la reunión de arranque.</p></div>`);
+
+/* 27 · CONTRAPORTADA */
+add('Contraportada', `
+<canvas class="guil"></canvas>
+<div class="in" style="justify-content:center;align-items:center;text-align:center">
+  <div style="flex:1"></div>
+  <div class="kicker" style="color:#c9a65a">Arquitectura Legal</div>
+  <div style="font-family:var(--display);font-size:34px;font-weight:700;color:#f6f1e3;margin-top:10px;line-height:1.05">Fabio Henríquez G.</div>
+  <div style="width:46px;height:.75px;background:#c9a65a;margin:14px auto"></div>
+  <p style="font-size:10.4px;color:#d9d3c3;max-width:300px;margin:0 auto">Asesor corporativo multijurisdiccional en negocios internacionales, procesos regulatorios, proyectos híbridos y estructuración financiera.</p>
+  <p class="mono" style="margin-top:14px;font-size:10px;color:#c9a65a;letter-spacing:.1em">fabiohenriquez.com</p>
+  <div style="flex:1"></div>
+  <p class="note" style="color:#a9a395;max-width:330px;margin:0 auto 18px">Documento de trabajo confidencial. Cifras y estados según el dossier HEART DEVELOPMENT del 6 nov 2026; reuniones, fechas y objetivos son propuestas de gestión.</p>
+</div>`, {dark:true, cover:true});
+
+/* ---------- Construcción ---------- */
+const N = P.length, L = N/2; let swiped=false;
+const book = document.getElementById('book'), single = document.getElementById('single');
+const cargoHTML = CARGO.map(c=>`<span>${c}</span>`).join('<i>|</i>');
+function pageNode(i){
+  const p = P[i];
+  const d = document.createElement('div');
+  d.className = 'pg' + (p.dark?' dark':'') + (p.cover?' cover':'') + (i%2? ' even':' odd');
+  const head = p.cover ? '' : `<div class="hd"><span><b>Mapa Maestro</b> · Fase 1</span><span>${p.sec}</span></div>`;
+  const foot = `<div class="ft"><div class="row1"><span>Fabio Henríquez G. · Arquitectura Legal</span><span class="folio">${i===0?'':i}</span></div><div class="cargo"><i>|</i>${cargoHTML}</div></div>`;
+  if (p.cover){
+    d.innerHTML = p.html;
+    const inn = d.querySelector('.in'); inn.insertAdjacentHTML('beforeend', foot);
+  } else {
+    d.innerHTML = head + `<div class="body">${p.html}</div>` + foot;
+  }
+  return d;
+}
+const leaves = [];
+for (let j=0;j<L;j++){
+  const lf = document.createElement('div'); lf.className='leaf';
+  const f = document.createElement('div'); f.className='face front'; f.appendChild(pageNode(2*j));
+  const b = document.createElement('div'); b.className='face back'; b.appendChild(pageNode(2*j+1));
+  lf.append(f,b); book.appendChild(lf); leaves.push(lf);
+  lf.addEventListener('click', e => { if (swiped || e.target.closest('a[data-go]')) return; lf.classList.contains('flipped') ? go(cur-1) : go(cur+1); });
+}
+const sps = P.map((_,i)=>{ const s=document.createElement('div'); s.className='sp'; s.appendChild(pageNode(i)); single.appendChild(s); s.addEventListener('click', e=>{ if (swiped || e.target.closest('a[data-go]')) return; const r=s.getBoundingClientRect(); (e.clientX - r.left) > r.width*0.35 ? gs(sp+1) : gs(sp-1); }); return s; });
+
+/* Guilloche: patrón de papel de valores */
+function guil(cv){
+  const W=1000,H=1414; cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  x.fillStyle='#13263b'; x.fillRect(0,0,W,H);
+  const g=x.createRadialGradient(W*.72,H*.36,40,W*.72,H*.36,W*.9); g.addColorStop(0,'rgba(47,116,105,.35)'); g.addColorStop(1,'rgba(19,38,59,0)'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  const cx=W*.72, cy=H*.36;
+  x.lineWidth=.9;
+  for(let k=0;k<46;k++){
+    x.beginPath();
+    const R=150+k*9.5, amp=14+ (k%5)*3, f1=18, f2=7, ph=k*.21;
+    for(let t=0;t<=Math.PI*2+.01;t+=.004){
+      const r=R+amp*Math.sin(f1*t+ph)+amp*.6*Math.cos(f2*t-ph);
+      const px=cx+r*Math.cos(t), py=cy+r*Math.sin(t);
+      t===0?x.moveTo(px,py):x.lineTo(px,py);
+    }
+    x.strokeStyle = k%7===0 ? 'rgba(201,166,90,.42)' : 'rgba(201,166,90,.13)';
+    x.stroke();
+  }
+  for(let k=0;k<60;k++){ x.beginPath(); const y0=H*.78+k*6.5; for(let px=0;px<=W;px+=4){ const py=y0+6*Math.sin(px/38+k*.4)+3*Math.sin(px/11-k); px===0?x.moveTo(px,py):x.lineTo(px,py);} x.strokeStyle='rgba(201,166,90,.07)'; x.stroke(); }
+}
+document.querySelectorAll('canvas.guil').forEach(guil);
+
+/* Estado */
+let cur=0, sp=0, mode='spread', userSingle=false;
+function zfix(){ leaves.forEach((lf,j)=>{ lf.style.zIndex = (j<cur) ? (j+1) : (L-j+1); }); }
+function render(){
+  leaves.forEach((lf,j)=> lf.classList.toggle('flipped', j<cur));
+  const off = cur===0 ? -250 : (cur===L ? 250 : 0);
+  book.style.transform = `translateX(${off}px)`;
+  const sh=document.getElementById('shadow'); sh.style.left = cur===0?'500px':'0'; sh.style.right = cur===L?'500px':'0';
+  label();
+}
+function label(){
+  let t;
+  if (mode==='spread'){
+    if (cur===0) t='Portada';
+    else if (cur===L) t='Contraportada';
+    else t=`Páginas ${2*cur-1}–${2*cur} de ${N-1}`;
+  } else t = sp===0 ? 'Portada' : (sp===N-1 ? 'Contraportada' : `Página ${sp} de ${N-1}`);
+  document.getElementById('count').textContent=t;
+  const pi = mode==='spread' ? (cur===0?0:(cur===L?N-1:2*cur-1)) : sp;
+  const j=document.getElementById('jump'); if(j && j.options.length){ let v=0; for(const o of j.options){ if(+o.value<=pi) v=o.value; } j.value=v; }
+}
+function go(n){
+  n=Math.max(0,Math.min(L,n)); if(n===cur) return;
+  const j = n>cur ? cur : cur-1;
+  leaves[j].style.zIndex = L+10;
+  cur=n; render();
+  setTimeout(zfix, 920);
+}
+function gs(n){ n=Math.max(0,Math.min(N-1,n)); sps[sp].classList.remove('on'); sp=n; sps[sp].classList.add('on'); label(); }
+zfix(); render(); sps[0].classList.add('on');
+
+/* Escala y modo */
+function layout(){
+  const vw=innerWidth, vh=innerHeight-64;
+  const want = (vw<760 || userSingle) ? 'single' : 'spread';
+  if (want!==mode){
+    if (want==='single'){ sps[sp].classList.remove('on'); sp = cur===0?0:(cur===L? N-1 : 2*cur-1); sps[sp].classList.add('on'); }
+    else { cur = sp===0?0:Math.floor((sp+1)/2); zfix(); render(); }
+    mode=want;
+  }
+  book.style.display = mode==='spread'?'block':'none';
+  single.style.display = mode==='single'?'block':'none';
+  const sc = document.getElementById('scaler');
+  let s;
+  if (mode==='spread'){ s=Math.min((vw-40)/1000,(vh-24)/707); sc.style.width='1000px'; }
+  else { s=Math.min((vw-20)/500,(vh-20)/707); sc.style.width='500px'; }
+  sc.style.transform=`scale(${s})`;
+  document.getElementById('mode').textContent = mode==='spread' ? 'Una página' : 'Doble página';
+  label(); fitCargo();
+}
+function fitCargo(){
+  document.querySelectorAll('.ft .cargo').forEach(el=>{
+    let fs=7.6; el.style.fontSize=fs+'px';
+    let guard=0; while(el.scrollWidth>el.clientWidth+0.5 && guard++<20){ fs-=.15; el.style.fontSize=fs+'px'; }
+  });
+}
+addEventListener('resize', layout);
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(layout);
+layout();
+
+/* Controles */
+const next=()=> mode==='spread'?go(cur+1):gs(sp+1);
+const prev=()=> mode==='spread'?go(cur-1):gs(sp-1);
+document.getElementById('next').onclick=next;
+document.getElementById('prev').onclick=prev;
+document.getElementById('mode').onclick=()=>{ userSingle=!userSingle; layout(); };
+document.getElementById('fs').onclick=async()=>{ try{ document.fullscreenElement ? await document.exitFullscreen() : await document.documentElement.requestFullscreen(); }catch(e){} };
+addEventListener('keydown',e=>{ if(e.target.tagName==='SELECT') return; if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();next();} else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();prev();} else if(e.key==='Home'){mode==='spread'?go(0):gs(0);} else if(e.key==='End'){mode==='spread'?go(L):gs(N-1);} });
+let sx=null; addEventListener('pointerdown',e=>{sx=e.clientX}); addEventListener('pointerup',e=>{ if(sx===null) return; const dx=e.clientX-sx; sx=null; if(Math.abs(dx)>60){ swiped=true; setTimeout(()=>swiped=false,350); dx<0?next():prev(); }});
+const jump=document.getElementById('jump');
+const secs=[]; P.forEach((p,i)=>{ if(!secs.find(s=>s.sec===p.sec)) secs.push({sec:p.sec,i}); });
+jump.innerHTML = secs.map(s=>`<option value="${s.i}">${s.sec}</option>`).join('');
+jump.onchange=()=>{ jumpTo(+jump.value); };
+function jumpTo(p){ if(mode==='spread'){ const n=p===0?0:Math.floor((p+1)/2); cur=n; zfix(); render(); } else gs(p); }
+document.addEventListener('click',e=>{ const a=e.target.closest('a[data-go]'); if(!a) return; e.preventDefault(); e.stopPropagation(); jumpTo(+a.dataset.go); }, true);
+document.querySelectorAll('a[data-go]').forEach(a=>{ a.setAttribute('href','#'); });
+</script>
+</body>
+</html>
